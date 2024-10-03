@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  train:
+    build: ./train
+    container_name: train_service
+    ports:
+      - "5000:5000"
+    networks:
+      - micro_train_network
+    depends_on:
+      - redis
+
+  redis:
+    image: "redis:alpine"
+    container_name: redis_service
+    ports:
+      - "6379:6379"
+    networks:
+      - micro_train_network
+
+  celery_worker:
+    build:
+      context: ./train
+      dockerfile: Dockerfile
+    command: celery -A app.celery worker --loglevel=info
+    container_name: celery_worker
+    networks:
+      - micro_train_network
+    depends_on:
+      - redis
+
+  celery_beat:
+    build:
+      context: ./train
+      dockerfile: Dockerfile
+    command: celery -A app.celery beat --loglevel=info
+    container_name: celery_beat
+    networks:
+      - micro_train_network
+    depends_on:
+      - redis
+
+  black:
+    build:
+      context: ./train
+      dockerfile: Dockerfile
+    command: [ "black", "train/" ]
+    volumes:
+      - .:/app
+
+  flake8:
+    build:
+      context: ./train
+      dockerfile: Dockerfile
+    command: [ "flake8", "train/" ]
+    volumes:
+      - .:/app
+
+
+networks:
+  micro_train_network:
+    driver: bridge

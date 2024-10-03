@@ -1,0 +1,6 @@
+Flask==2.2.3
+Werkzeug==2.2.2
+celery==5.4.0
+redis==3.5.3
+black==24.8.0
+flake8==7.1.1
