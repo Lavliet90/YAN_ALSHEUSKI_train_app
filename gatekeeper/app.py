@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from datetime import datetime
+from datetime import datetime, timezone
 from models import db, GateStatus
 
 app = Flask(__name__)
@@ -11,6 +11,7 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+
 @app.route('/gate/status', methods=['GET'])
 def get_gate_status():
     gate = GateStatus.query.order_by(GateStatus.id.desc()).first()
@@ -20,7 +21,12 @@ def get_gate_status():
             'last_modified': gate.last_modified
         }), 200
     else:
-        return jsonify({'message': 'No data found'}), 404
+        default_status = {
+            'status': True,
+            'last_modified': datetime.now(timezone.utc).isoformat()
+        }
+        return jsonify(default_status), 200
+
 
 @app.route('/gate/status', methods=['POST'])
 def update_gate_status():
@@ -32,9 +38,9 @@ def update_gate_status():
     gate = GateStatus.query.first()
     if gate:
         gate.status = new_status
-        gate.last_modified = datetime.utcnow()
+        gate.last_modified = datetime.now(timezone.utc)
     else:
-        gate = GateStatus(status=new_status, last_modified=datetime.utcnow())
+        gate = GateStatus(status=new_status, last_modified=datetime.now(timezone.utc))
         db.session.add(gate)
 
     db.session.commit()
@@ -45,9 +51,6 @@ def update_gate_status():
         'last_modified': gate.last_modified
     }), 200
 
-@app.route('/')
-def index():
-    return "Gatekeeper Service Running", 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)

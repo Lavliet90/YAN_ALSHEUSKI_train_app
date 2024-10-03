@@ -20,6 +20,22 @@ services:
       - micro_train_network
     volumes:
       - ./gatekeeper:/app
+    depends_on:
+      - train
+
+  central:
+    build: ./central
+    container_name: central_service
+    ports:
+      - "5002:5002"
+    networks:
+      - micro_train_network
+    depends_on:
+      - redis
+      - train
+      - gatekeeper
+    volumes:
+      - ./central/logs:/app/logs  # Замените на путь к вашим логам
 
 
   redis:
@@ -67,6 +83,8 @@ services:
     command: [ "flake8", "train/" ]
     volumes:
       - .:/app
+
+
 
 
 networks:

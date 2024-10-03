@@ -2,11 +2,14 @@ from flask import Flask
 from celery import Celery
 import random
 import logging
+import redis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+redis_client = redis.Redis(host="redis", port=6379, db=0)
 
 
 def make_celery(app):
@@ -34,7 +37,7 @@ app.config["beat_schedule"] = {
 
 celery = make_celery(app)
 
-STATIONS = ["Station1", "Station2", "Station3", "Station4"]  # Добавьте до 20 станций
+STATIONS = ["Station1", "Station2", "Station3", "Station4"]
 
 
 @app.route("/")
@@ -47,6 +50,7 @@ def index():
 def broadcast_speed():
     speed = random.uniform(0, 180)
     logger.info(f"Broadcasting speed: {speed}")
+    redis_client.publish("train_speed", speed)
     return speed
 
 
@@ -54,4 +58,5 @@ def broadcast_speed():
 def broadcast_station():
     station = random.choice(STATIONS)
     logger.info(f"Broadcasting station: {station}")
+    redis_client.publish("train_station", station)
     return station
