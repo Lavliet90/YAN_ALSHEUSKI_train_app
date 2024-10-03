@@ -11,6 +11,17 @@ services:
     depends_on:
       - redis
 
+  gatekeeper:
+    build: ./gatekeeper
+    container_name: gatekeeper_service
+    ports:
+      - "5001:5001"
+    networks:
+      - micro_train_network
+    volumes:
+      - ./gatekeeper:/app
+
+
   redis:
     image: "redis:alpine"
     container_name: redis_service
