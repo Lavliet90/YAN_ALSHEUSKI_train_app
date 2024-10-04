@@ -7,6 +7,7 @@ RESULT_BACKEND = "redis://redis:6379/0"
 
 
 STATIONS = [
+    "Białystok",
     "Warszawa Centralna",
     "Kraków Główny",
     "Wrocław Główny",
@@ -22,7 +23,6 @@ STATIONS = [
     "Rzeszów Główny",
     "Olsztyn Główny",
     "Gdynia Główna",
-    "Białystok",
     "Kielce",
     "Opole Główne",
     "Częstochowa Główna",

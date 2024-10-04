@@ -1,9 +1,10 @@
 from flask import Flask
 import requests
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 import redis
 import threading
+import pytz
 from settings_central import (
     GATEKEEPER_URL,
     SLOW_LOG,
@@ -21,6 +22,8 @@ logging.basicConfig(level=logging.INFO)
 
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
+poland_tz = pytz.timezone("Europe/Warsaw")
+
 
 def log_speed(filename, speed, timestamp):
     try:
@@ -33,7 +36,7 @@ def log_speed(filename, speed, timestamp):
 
 def handle_speed_message(message):
     speed = float(message["data"])
-    current_time = datetime.now(timezone.utc)
+    current_time = datetime.now(poland_tz)
 
     if speed < 40:
         log_speed(SLOW_LOG, speed, current_time)
@@ -45,7 +48,7 @@ def handle_speed_message(message):
 
 def handle_station_message(message):
     station = message["data"].decode("utf-8")
-    current_time = datetime.now(timezone.utc)
+    current_time = datetime.now(poland_tz)
     logging.info(
         f"Train approaching station: {station} at {current_time.isoformat()}"
     )

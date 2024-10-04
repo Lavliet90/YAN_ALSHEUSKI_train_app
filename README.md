@@ -1,4 +1,4 @@
-Start all service 
+Start all services 
  - docker-compose up --build
 
 Start service without tests and linters

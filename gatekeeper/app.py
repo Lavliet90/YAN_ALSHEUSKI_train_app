@@ -1,13 +1,16 @@
 from flask import Flask, jsonify, request
-from datetime import datetime, timezone
+from datetime import datetime
 from models import db, GateStatus
-from const_gatekeeper import SQLALCHEMY_DATABASE_URI, FLASK_HOST, FLASK_PORT
+import pytz
+from settings_gatekeeper import SQLALCHEMY_DATABASE_URI, FLASK_HOST, FLASK_PORT
 
 app = Flask(__name__)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 
 db.init_app(app)
+
+poland_tz = pytz.timezone("Europe/Warsaw")
 
 with app.app_context():
     db.create_all()
@@ -26,7 +29,7 @@ def get_gate_status():
     else:
         default_status = {
             "status": True,
-            "last_modified": datetime.now(timezone.utc).isoformat(),
+            "last_modified": datetime.now(poland_tz).isoformat(),
         }
         return jsonify(default_status), 200
 
@@ -41,10 +44,10 @@ def update_gate_status():
     gate = GateStatus.query.first()
     if gate:
         gate.status = new_status
-        gate.last_modified = datetime.now(timezone.utc)
+        gate.last_modified = datetime.now(poland_tz)
     else:
         gate = GateStatus(
-            status=new_status, last_modified=datetime.now(timezone.utc)
+            status=new_status, last_modified=datetime.now(poland_tz)
         )
         db.session.add(gate)
 
