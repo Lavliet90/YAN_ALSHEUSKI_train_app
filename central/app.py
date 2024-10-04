@@ -1,30 +1,38 @@
-from flask import Flask, request, jsonify
+from flask import Flask
 import requests
 import logging
 from datetime import datetime, timezone
 import redis
 import threading
+from settings_central import (
+    GATEKEEPER_URL,
+    SLOW_LOG,
+    NORMAL_LOG,
+    FAST_LOG,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_DB,
+    FLASK_PORT,
+    FLASK_HOST,
+)
 
 app = Flask(__name__)
-
 logging.basicConfig(level=logging.INFO)
 
-GATEKEEPER_URL = "http://gatekeeper:5001/gate/status"
-SLOW_LOG = "logs/slow.log"
-NORMAL_LOG = "logs/normal.log"
-FAST_LOG = "logs/fast.log"
-
-redis_client = redis.Redis(host='redis', port=6379, db=0)
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
 
 def log_speed(filename, speed, timestamp):
-    with open(filename, 'a') as f:
-        f.write(f"{timestamp.isoformat()}: {speed}\n")
-    logging.info(f"Logged speed: {speed} in {filename}")
+    try:
+        with open(filename, "a") as f:
+            f.write(f"{timestamp.isoformat()}: {speed}\n")
+        logging.info(f"Logged speed: {speed} in {filename}")
+    except Exception as e:
+        logging.error(f"Failed to log speed: {e}")
 
 
 def handle_speed_message(message):
-    speed = float(message['data'])
+    speed = float(message["data"])
     current_time = datetime.now(timezone.utc)
 
     if speed < 40:
@@ -36,27 +44,33 @@ def handle_speed_message(message):
 
 
 def handle_station_message(message):
-    station = message['data'].decode('utf-8')
+    station = message["data"].decode("utf-8")
     current_time = datetime.now(timezone.utc)
-    logging.info(f"Train approaching station: {station} at {current_time.isoformat()}")
+    logging.info(
+        f"Train approaching station: {station} at {current_time.isoformat()}"
+    )
 
-    gate_response = requests.get(GATEKEEPER_URL)
+    try:
+        gate_response = requests.get(GATEKEEPER_URL)
+        gate_response.raise_for_status()
 
-    if gate_response.status_code == 200:
         gate_status = gate_response.json()
-        if gate_status['status']:
+        if gate_status["status"]:
             logging.info("Gate is open. Requesting to lower the gate.")
             requests.post(GATEKEEPER_URL, json={"status": False})
             threading.Timer(10.0, raise_gate).start()
         else:
             logging.error("Gate is closed. No action taken.")
-    else:
-        logging.error("Failed to check gate status.")
+    except requests.RequestException as e:
+        logging.error(f"Failed to check gate status: {e}")
 
 
 def raise_gate():
-    requests.post(GATEKEEPER_URL, json={"status": True})
-    logging.info("Raising gate after 10 seconds.")
+    try:
+        requests.post(GATEKEEPER_URL, json={"status": True})
+        logging.info("Raising gate after 10 seconds.")
+    except requests.RequestException as e:
+        logging.error(f"Failed to raise gate: {e}")
 
 
 def listen_to_redis():
@@ -64,7 +78,7 @@ def listen_to_redis():
     pubsub.subscribe(
         **{
             "train_speed": handle_speed_message,
-            "train_station": handle_station_message
+            "train_station": handle_station_message,
         }
     )
     pubsub.run_in_thread(sleep_time=0.001)
@@ -72,5 +86,5 @@ def listen_to_redis():
 
 listen_to_redis()
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002)
+if __name__ == "__main__":
+    app.run(host=FLASK_HOST, port=FLASK_PORT)

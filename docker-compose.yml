@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   train:
     build: ./train
@@ -35,7 +33,7 @@ services:
       - train
       - gatekeeper
     volumes:
-      - ./central/logs:/app/logs  # Замените на путь к вашим логам
+      - ./central/logs:/app/logs
 
 
   redis:
@@ -68,23 +66,63 @@ services:
     depends_on:
       - redis
 
-  black:
-    build:
-      context: ./train
-      dockerfile: Dockerfile
-    command: [ "black", "train/" ]
-    volumes:
-      - .:/app
-
   flake8:
     build:
-      context: ./train
-      dockerfile: Dockerfile
-    command: [ "flake8", "train/" ]
+      context: .
+      dockerfile: Dockerfile.lint
+    command: [ "flake8", "./train", "./central", "./gatekeeper" ]
     volumes:
       - .:/app
+    networks:
+      - micro_train_network
 
+  black:
+    build:
+      context: .
+      dockerfile: Dockerfile.lint
+    command: [ "black", "--line-length", "79", "./train", "./central", "./gatekeeper" ]
+    volumes:
+      - .:/app
+    networks:
+      - micro_train_network
 
+  test_train:
+    build: ./train
+    container_name: test_service
+    networks:
+      - micro_train_network
+    depends_on:
+      - redis
+    command: [ "pytest", "train/tests", "--maxfail=1", "--disable-warnings" ]
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app/train
+
+  test_central:
+    build: ./central
+    networks:
+      - micro_train_network
+    depends_on:
+      - redis
+      - gatekeeper
+    command: [ "pytest", "central/tests", "--maxfail=1", "--disable-warnings" ]
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app/central
+
+  test_gatekeeper:
+    build: ./gatekeeper
+    networks:
+      - micro_train_network
+    depends_on:
+      - redis
+    command: [ "pytest", "gatekeeper/tests", "--maxfail=1", "--disable-warnings" ]
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONPATH=/app/gatekeeper
 
 
 networks:

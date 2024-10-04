@@ -1,5 +1,14 @@
 from flask import Flask
 from celery import Celery
+from settings_train import (
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_DB,
+    CELERY_BROKER_URL,
+    RESULT_BACKEND,
+    STATIONS,
+    CELERY_BEAT_SCHEDULE,
+)
 import random
 import logging
 import redis
@@ -9,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-redis_client = redis.Redis(host="redis", port=6379, db=0)
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
 
 def make_celery(app):
@@ -22,28 +31,11 @@ def make_celery(app):
     return celery
 
 
-app.config["CELERY_BROKER_URL"] = "redis://redis:6379/0"
-app.config["result_backend"] = "redis://redis:6379/0"
-app.config["beat_schedule"] = {
-    "broadcast-speed-every-10-seconds": {
-        "task": "broadcast_speed",
-        "schedule": 10.0,
-    },
-    "broadcast-station-every-180-seconds": {
-        "task": "broadcast_station",
-        "schedule": 18.0,
-    },
-}
+app.config["CELERY_BROKER_URL"] = CELERY_BROKER_URL
+app.config["result_backend"] = RESULT_BACKEND
+app.config["beat_schedule"] = CELERY_BEAT_SCHEDULE
 
 celery = make_celery(app)
-
-STATIONS = ["Station1", "Station2", "Station3", "Station4"]
-
-
-@app.route("/")
-def index():
-    logger.info("KOK")
-    return "Train Service Running"
 
 
 @celery.task(name="broadcast_speed")

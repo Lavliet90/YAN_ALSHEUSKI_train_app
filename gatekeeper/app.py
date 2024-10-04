@@ -1,10 +1,11 @@
 from flask import Flask, jsonify, request
 from datetime import datetime, timezone
 from models import db, GateStatus
+from const_gatekeeper import SQLALCHEMY_DATABASE_URI, FLASK_HOST, FLASK_PORT
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gatekeeper.db'
+app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 
 db.init_app(app)
 
@@ -12,45 +13,54 @@ with app.app_context():
     db.create_all()
 
 
-@app.route('/gate/status', methods=['GET'])
+@app.route("/gate/status", methods=["GET"])
 def get_gate_status():
     gate = GateStatus.query.order_by(GateStatus.id.desc()).first()
     if gate:
-        return jsonify({
-            'status': gate.status,
-            'last_modified': gate.last_modified
-        }), 200
+        return (
+            jsonify(
+                {"status": gate.status, "last_modified": gate.last_modified}
+            ),
+            200,
+        )
     else:
         default_status = {
-            'status': True,
-            'last_modified': datetime.now(timezone.utc).isoformat()
+            "status": True,
+            "last_modified": datetime.now(timezone.utc).isoformat(),
         }
         return jsonify(default_status), 200
 
 
-@app.route('/gate/status', methods=['POST'])
+@app.route("/gate/status", methods=["POST"])
 def update_gate_status():
     data = request.get_json()
-    new_status = data.get('status')
+    new_status = data.get("status")
     if new_status not in [True, False]:
-        return jsonify({'error': 'Invalid status'}), 400
+        return jsonify({"error": "Invalid status"}), 400
 
     gate = GateStatus.query.first()
     if gate:
         gate.status = new_status
         gate.last_modified = datetime.now(timezone.utc)
     else:
-        gate = GateStatus(status=new_status, last_modified=datetime.now(timezone.utc))
+        gate = GateStatus(
+            status=new_status, last_modified=datetime.now(timezone.utc)
+        )
         db.session.add(gate)
 
     db.session.commit()
 
-    return jsonify({
-        'message': f'Gate status updated to {new_status}',
-        'status': new_status,
-        'last_modified': gate.last_modified
-    }), 200
+    return (
+        jsonify(
+            {
+                "message": f"Gate status updated to {new_status}",
+                "status": new_status,
+                "last_modified": gate.last_modified,
+            }
+        ),
+        200,
+    )
 
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+if __name__ == "__main__":
+    app.run(host=FLASK_HOST, port=FLASK_PORT)
